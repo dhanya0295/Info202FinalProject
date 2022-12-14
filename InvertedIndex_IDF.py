@@ -1,0 +1,147 @@
+import re
+def stripWord(w):
+    s = w
+    s = re.sub('[^a-zA-Z0-9]+', '', s)
+    return s
+
+
+def create_file_index(read_file, file_path):
+    words_list = read_file.split()
+
+    if file_path not in file_index:
+
+        key = file_path
+        values = {}
+        for word in words_list:
+            word = stripWord(word)
+            word = word.lower()
+            if word not in values:
+                values[word] = 1
+            else:
+                values[word] += 1
+
+        file_index[key] = values
+
+    return None
+
+
+docname_with_len = {}  # To store the names of the documents in the system along with the number of words in the doc
+
+
+def create_inv_index(read_file, file_path):
+    words_list = read_file.split()
+    docname_with_len[file_path] = len(words_list)
+    for word in words_list:
+        key = stripWord(word.lower())
+        if key in words_collection:
+            words_collection[key] += 1  # words_collection : List of all the words in all the docs
+        else:
+            words_collection[key] = 1
+
+        if key in inv_index.keys():
+            if file_path in inv_index[key].keys():
+                inv_index[key][file_path] += 1
+            else:
+                inv_index[key][file_path] = 1
+        else:
+            value = {file_path: 1}
+            inv_index[key] = value
+
+
+import os
+from pathlib import Path
+import json
+
+# This is my path
+path = "C://Users//"
+
+# to store files in a list
+list_of_docs = []
+
+for (root, dirs, file) in os.walk(path):
+    #     print("\nRoot: ", root)
+    #     print("\nDir: ",dirs)
+    #     print("\nFile: ",file)
+    for f in file:
+        file_path = root + "//" + f
+        file_path = file_path.replace('\\', '//')
+        #         print("File Path = ",file_path)
+        list_of_docs.append(file_path)
+
+f = open("ListofAllDocs.txt", "w")
+
+for file in list_of_docs:
+    #     print(file)
+    name = str(file)
+    f.write(name + "\n")
+f.close()
+
+file_index = {}
+inv_index = {}
+words_collection = {}
+import docx2txt
+
+doc_length = {}
+for file in list_of_docs:
+    try:
+
+        if '.docx' in file:
+            read_file = docx2txt.process(file)
+
+            create_inv_index(read_file, file)
+            create_file_index(read_file, file)
+    except:
+        continue
+
+# Serializing json
+json_object = json.dumps(docname_with_len, indent=4)
+
+# Writing to sample.json
+with open("docNameLength.json", "w") as outfile:
+    outfile.write(json_object)
+
+import json
+
+# Serializing json
+json_object = json.dumps(inv_index, indent=4)
+
+# Writing to sample.json
+with open("invertedIndex.json", "w") as outfile:
+    outfile.write(json_object)
+
+# Serializing json
+json_object = json.dumps(words_collection, indent=4)
+
+# Writing to sample.json
+with open("wordsCollection.json", "w") as outfile:
+    outfile.write(json_object)
+
+# calc idf
+import math
+
+idf_dict = {}
+
+docCount = len(list_of_docs)  # Total number of documents
+
+
+def calc_idf():
+    word_frequency = 0
+    for key, value in words_collection.items():
+
+        if key in inv_index.keys():
+            word_frequency = len(inv_index[key])
+
+        division_part = (docCount - word_frequency + 0.5) / (word_frequency + 0.5)
+        idf = math.log(1 + division_part)
+
+        idf_dict[key] = idf
+
+
+calc_idf()
+
+# Serializing json
+json_object = json.dumps(idf_dict, indent=4)
+
+# Writing to sample.json
+with open("idfDictionary.json", "w") as outfile:
+    outfile.write(json_object)
